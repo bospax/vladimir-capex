@@ -257,86 +257,107 @@ class MainCapexTimelineService
     */
 
     private function buildSequentialPhase(
-        $groupKey,
-        $label,
-        $approvers,
-        $history,
-        $users,
-        &$isActivePhase,
-        $capex
-    ) {
-        $list = $approvers->get($groupKey, collect());
+		$groupKey,
+		$label,
+		$approvers,
+		$history,
+		$users,
+		&$isActivePhase,
+		$capex
+	) {
+		$list = $approvers->get($groupKey, collect());
 
-        $usersArr = [];
+		$usersArr = [];
 
-        // FINAL MAJOR OVERRIDE
-        if (
-            $groupKey === 'MAJOR APPROVER'
-            && $capex->phase === 'major_approval_completed'
-        ) {
-            foreach ($list as $item) {
-                $usersArr[] = [
-                    'name' => $users[$item->user_id]->firstname ?? 'N/A',
-                    'level' => $item->level,
-                    'status' => 'approved'
-                ];
-            }
+		// FINAL MAJOR OVERRIDE
+		if (
+			$groupKey === 'MAJOR APPROVER'
+			&& $capex->phase === 'major_approval_completed'
+		) {
+			foreach ($list as $item) {
+				$usersArr[] = [
+					'name' => $users[$item->user_id]->firstname ?? 'N/A',
+					'level' => $item->level,
+					'status' => 'approved'
+				];
+			}
 
-            return [
-                'label' => $label,
-                'phase_status' => 'major_approval_completed',
-                'users' => $usersArr
-            ];
-        }
+			return [
+				'label' => $label,
+				'phase_status' => 'major_approval_completed',
+				'users' => $usersArr
+			];
+		}
 
-        $currentLevel = 1;
+		$currentLevel = 1;
+		$hasReturned = false;
 
-        foreach ($list as $item) {
+		foreach ($list as $item) {
 
-            $latest = $history[$item->user_id] ?? null;
+			$latest = $history[$item->user_id] ?? null;
 
-            if (!$isActivePhase) {
-                $status = $latest
-                    ? ($latest->status === 'rejected' ? 'rejected' : 'completed')
-                    : 'pending';
+			if (!$isActivePhase) {
 
-            } else {
+				if ($latest) {
+					if ($latest->status === 'returned') {
+						$status = 'returned';
+						$hasReturned = true;
+					} elseif ($latest->status === 'rejected') {
+						$status = 'rejected';
+					} else {
+						$status = 'completed';
+					}
+				} else {
+					$status = 'pending';
+				}
 
-                if ($latest) {
+			} else {
 
-                    if ($latest->status === 'rejected') {
-                        $status = 'rejected';
-                    } else {
-                        $status = 'completed';
-                        $currentLevel++;
-                    }
+				if ($latest) {
 
-                } elseif ($item->level == $currentLevel) {
-                    $status = 'current';
-                } else {
-                    $status = 'pending';
-                }
-            }
+					if ($latest->status === 'returned') {
+						$status = 'returned';
+						$hasReturned = true;
 
-            $usersArr[] = [
-                'name' => $users[$item->user_id]->firstname ?? 'N/A',
-                'level' => $item->level,
-                'status' => $this->mapStatus('major', $status)
-            ];
-        }
+					} elseif ($latest->status === 'rejected') {
+						$status = 'rejected';
 
-        $phaseStatus = $this->getPhaseStatus($usersArr);
+					} else {
+						$status = 'completed';
+						$currentLevel++;
+					}
 
-        if ($phaseStatus !== 'completed') {
-            $isActivePhase = false;
-        }
+				} elseif ($item->level == $currentLevel) {
+					$status = 'current';
+				} else {
+					$status = 'pending';
+				}
+			}
 
-        return [
-            'label' => $label,
-            'phase_status' => $this->mapStatus('major', $phaseStatus),
-            'users' => $usersArr
-        ];
-    }
+			$usersArr[] = [
+				'name' => $users[$item->user_id]->firstname ?? 'N/A',
+				'level' => $item->level,
+				'status' => $this->mapStatus('major', $status)
+			];
+		}
+
+		// 🔥 FIX: PRIORITIZE RETURNED
+		if ($hasReturned) {
+			$phaseStatus = 'returned';
+		} else {
+			$phaseStatus = $this->getPhaseStatus($usersArr);
+		}
+
+		if ($phaseStatus !== 'completed') {
+			$isActivePhase = false;
+		}
+
+		return [
+			'label' => $label,
+			'phase_status' => $this->mapStatus('major', $phaseStatus),
+			'users' => $usersArr
+		];
+	}
 
     /*
     |--------------------------------------------------------------------------
@@ -399,15 +420,16 @@ class MainCapexTimelineService
     */
 
     private function getPhaseStatus($users)
-    {
-        $statuses = collect($users)->pluck('status');
+	{
+		$statuses = collect($users)->pluck('status');
 
-        if ($statuses->contains('rejected')) return 'rejected';
-        if ($statuses->contains('current')) return 'current';
-        if ($statuses->every(fn($s) => in_array($s, ['approved']))) return 'completed';
+		if ($statuses->contains('returned')) return 'returned'; // 🔥 NEW
+		if ($statuses->contains('rejected')) return 'rejected';
+		if ($statuses->contains('current')) return 'current';
+		if ($statuses->every(fn($s) => in_array($s, ['approved']))) return 'completed';
 
-        return 'pending';
-    }
+		return 'pending';
+	}
 
     private function isEstimatorLevelRejected($history, $level, $capex)
     {
