@@ -47,7 +47,7 @@ class MainCapex extends Model
         return $this->hasMany(SubCapex::class, 'main_capex_id');
     }
 
-	public function approvers()
+	public function approverSets()
     {
         return $this->hasMany(ApproverSet::class, 'main_capex_id');
     }

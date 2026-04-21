@@ -30,6 +30,24 @@ class MainCapexFaService
     }
 
     /**
+     * Get FA Transactions by Conditions
+     */
+    public function getByConditions(array $conditions)
+	{
+		$query = MainCapex::query();
+
+		if (!empty($conditions['status'])) {
+			$query->whereIn('status', $conditions['status']);
+		}
+
+		if (!empty($conditions['phase'])) {
+			$query->where('phase', $conditions['phase']);
+		}
+
+		return $query->latest()->paginate(10);
+	}
+
+    /**
      * RETURN TRANSACTION
      */
     public function return($id)
@@ -90,7 +108,8 @@ class MainCapexFaService
             $capex->estimation_level != 1 ||
             $capex->estimation_approving_level != 1 ||
             $capex->first_phase_level != 1 ||
-            $capex->status !== 'pending' ||
+            ($capex->status !== 'pending' &&
+             $capex->status !== 'returned') ||
             $capex->phase !== 'for_first_phase_approval'
         ) {
             throw new \Exception('Invalid FA transaction state.');

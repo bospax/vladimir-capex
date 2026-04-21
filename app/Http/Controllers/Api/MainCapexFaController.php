@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\MainCapexResource;
 use App\Services\MainCapexFaService;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 
 class MainCapexFaController extends Controller
 {
@@ -26,6 +29,20 @@ class MainCapexFaController extends Controller
             'data' => $data
         ]);
     }
+
+	public function getDataByFaTab(Request $request)
+	{
+		$conditions = [
+			'user_id' => Auth::id(),
+			'section' => $request->input('section'),
+			'status' => $request->input('status') ? explode(',', $request->input('status')) : [],
+			'phase' => $request->input('phase'),
+		];
+
+		$data = $this->service->getByConditions($conditions);
+
+		return MainCapexResource::collection($data);
+	}
 
     /**
      * POST: Return

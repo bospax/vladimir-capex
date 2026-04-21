@@ -13,15 +13,15 @@ return new class extends Migration
     {
         Schema::create('sub_subcapex', function (Blueprint $table) {
             $table->id();
-			$table->foreignId('subcapex_id')->constrained('sub_capex')->onDelete('cascade');
+			$table->foreignId('sub_capex_id')->constrained('sub_capex')->onDelete('cascade');
             $table->string('particulars');
             $table->decimal('estimated_cost', 15, 2)->default(0);
             $table->string('attachments')->nullable();
             $table->integer('estimator_id');
-			$table->integer('estimation_level')->default(0);
+			$table->integer('estimation_level')->default(1);
 			$table->string('estimation_status');
-			$table->integer('estimation_approver_id');
-            $table->string('estimation_approving_status');
+			$table->integer('estimation_approver_id')->nullable();
+            $table->string('estimation_approving_status')->nullable();
 			$table->integer('is_applicable')->default(1);
             $table->text('remarks')->nullable();
             $table->timestamps();

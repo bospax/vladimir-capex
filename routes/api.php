@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ProjectDescriptionController;
 use App\Http\Controllers\Api\TypeOfExpenditureController;
 use App\Http\Controllers\Api\TypeOfSubCapexController;
 use App\Http\Controllers\Api\ApproverUnitController;
+use App\Http\Controllers\Api\MainCapexEstimatorController;
 use App\Http\Controllers\Api\MainCapexFaController;
 use App\Http\Controllers\Api\MainCapexRequestorController;
 
@@ -15,7 +16,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
 	Route::get('main-capex/{id}/timeline', [MainCapexController::class, 'timeline']);
 	Route::get('main-capex/{id}/history', [MainCapexController::class, 'history']);
-	Route::get('main-capex/requestor/tab', [MainCapexRequestorController::class, 'getDataByRequestorTab']);
 	Route::post('project-descriptions/import', [ProjectDescriptionController::class, 'import']);
 
 	Route::apiResource('type-of-expenditures', TypeOfExpenditureController::class);
@@ -32,10 +32,20 @@ Route::middleware('auth:sanctum')->group(function () {
 		Route::delete('{one_charging_id}', [ApproverUnitController::class, 'destroy']);
 	});
 
+	Route::prefix('requestor')->group(function () {
+		Route::get('main-capex/tab', [MainCapexRequestorController::class, 'getDataByRequestorTab']);
+	});
+
 	Route::prefix('fa')->group(function () {
-		Route::get('/main-capex', [MainCapexFaController::class, 'index']);
+		Route::get('/main-capex/tab', [MainCapexFaController::class, 'getDataByFaTab']);
 		Route::post('/main-capex/{id}/return', [MainCapexFaController::class, 'return']);
 		Route::post('/main-capex/{id}/submit', [MainCapexFaController::class, 'submit']);
+	});
+
+	Route::prefix('estimator')->group(function () {
+		Route::get('/main-capex', [MainCapexEstimatorController::class, 'index']);
+		Route::get('/main-capex/{id}', [MainCapexEstimatorController::class, 'show']);
+		Route::post('/main-capex/{id}/estimate', [MainCapexEstimatorController::class, 'saveEstimation']);
 	});
 });
 

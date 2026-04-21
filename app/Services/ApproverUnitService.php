@@ -83,7 +83,9 @@ class ApproverUnitService
     {
         return DB::transaction(function () use ($data) {
 
-            $exists = ApproverUnit::where('one_charging_id', $data['one_charging_id'])->exists();
+            $exists = ApproverUnit::where('one_charging_id', $data['one_charging_id'])
+				->where('approver_set_name', $data['approver_set_name'])
+				->exists();
 
             if ($exists) {
                 throw new \Exception('Approver set already exists for this one charging');

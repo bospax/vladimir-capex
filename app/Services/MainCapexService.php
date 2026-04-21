@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\ApproverSet;
+use App\Models\ApproverUnit;
 use App\Models\MainCapex;
 use App\Models\SubCapex;
 use Illuminate\Support\Facades\DB;
@@ -100,6 +102,9 @@ class MainCapexService
             // 2. Create main
             $main = MainCapex::create($data);
 
+			// ✅ 2.5 Attach approvers (IMPORTANT PART)
+            $this->attachApprovers($main);
+
             // 3. Prepare children
             $children = collect($subCapexData)->map(function ($item) use ($main) {
                 return [
@@ -129,6 +134,28 @@ class MainCapexService
             // 5. Return with relations
             return MainCapex::with('subCapex')->find($main->id);
         });
+    }
+
+	private function attachApprovers(MainCapex $main)
+    {
+        $approvers = ApproverUnit::where('one_charging_id', $main->one_charging_id)->get();
+
+        if ($approvers->isEmpty()) {
+            throw new \Exception('No approvers found for this One Charging ID');
+        }
+
+        $approverSetData = $approvers->map(function ($item) use ($main) {
+            return [
+                'main_capex_id' => $main->id,
+                'user_id' => $item->approver_id,
+                'level' => $item->level,
+                'approver_set_name' => $item->approver_set_name,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        })->toArray();
+
+        ApproverSet::insert($approverSetData);
     }
 
 	public function updateWithChildren($id, array $data)

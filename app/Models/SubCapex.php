@@ -24,4 +24,9 @@ class SubCapex extends Model
     {
         return $this->belongsTo(MainCapex::class);
     }
+
+	public function subSubCapex()
+    {
+        return $this->hasMany(SubSubCapex::class, 'sub_capex_id');
+    }
 }
