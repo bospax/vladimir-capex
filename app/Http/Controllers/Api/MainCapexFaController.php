@@ -47,13 +47,24 @@ class MainCapexFaController extends Controller
     /**
      * POST: Return
      */
-    public function return($id)
+    public function return($id, Request $request)
     {
-        $data = $this->service->return($id);
+        $data = $this->service->return($id, $request->input('remarks'));
 
         return response()->json([
             'success' => true,
             'message' => 'Transaction returned successfully.',
+            'data' => $data
+        ]);
+    }
+
+	public function reject($id, Request $request)
+    {
+        $data = $this->service->reject($id, $request->input('remarks'));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Transaction rejected successfully.',
             'data' => $data
         ]);
     }

@@ -29,7 +29,8 @@ class MainCapexHistory extends Model
         'phase',
         'remarks',
         'approver_id',
-        'change_log'
+        'change_log',
+        'revision_no'
     ];
 
     // 🔗 Relationships

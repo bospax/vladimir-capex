@@ -19,6 +19,7 @@ class MainCapexTimelineService
             ->groupBy('approver_set_name');
 
         $rawHistory = MainCapexHistory::where('main_capex_id', $capexId)
+			->where('revision_no', $capex->revision_no)
             ->orderByDesc('id')
             ->get();
 
@@ -47,7 +48,7 @@ class MainCapexTimelineService
         );
 
         // Estimator Flow
-        for ($level = 1; $level <= 3; $level++) {
+        for ($level = 1; $level <= 4; $level++) {
 
             $timeline[] = $this->buildEstimatorLevel(
                 "ESTIMATOR LEVEL $level",

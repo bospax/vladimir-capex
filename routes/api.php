@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::prefix('fa')->group(function () {
 		Route::get('/main-capex/tab', [MainCapexFaController::class, 'getDataByFaTab']);
 		Route::post('/main-capex/{id}/return', [MainCapexFaController::class, 'return']);
+		Route::post('/main-capex/{id}/reject', [MainCapexFaController::class, 'reject']);
 		Route::post('/main-capex/{id}/submit', [MainCapexFaController::class, 'submit']);
 	});
 

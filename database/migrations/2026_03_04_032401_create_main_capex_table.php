@@ -31,6 +31,7 @@ return new class extends Migration
 			$table->integer('major_level')->default(0);
 			$table->string('status');
 			$table->string('phase')->nullable();
+			$table->integer('revision_no')->nullable()->default(1);
 			
             $table->text('remarks')->nullable();
             $table->timestamps();

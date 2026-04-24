@@ -84,6 +84,7 @@ class MainCapexService
 		$data['major_level'] = 1;
 		$data['status'] = 'pending';
 		$data['phase'] = 'for_first_phase_approval';
+		$data['revision_no'] = 1;
 
 		return $data;
 	}
@@ -174,6 +175,13 @@ class MainCapexService
 
 			if (empty($subCapexData)) {
 				throw new \Exception('Sub Capex cannot be empty');
+			}
+
+			if ((($main->status === 'returned') || ($main->status === 'rejected')) && $main->phase === 'for_first_phase_approval') {
+				$data['first_phase_level'] = 1;
+				$data['status'] = 'pending';
+				$data['phase'] = 'for_first_phase_approval';
+				$data['revision_no'] = $main->revision_no + 1;
 			}
 
 			// 4. Update main

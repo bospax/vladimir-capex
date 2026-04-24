@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ApproverSet;
 use App\Models\MainCapex;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -50,69 +51,203 @@ class MainCapexFaService
     /**
      * RETURN TRANSACTION
      */
-    public function return($id)
-    {
-        return DB::transaction(function () use ($id) {
+	public function return($id, $remarks = null)
+	{
+		return DB::transaction(function () use ($id, $remarks) {
 
-            $capex = MainCapex::findOrFail($id);
+			// $userId = Auth::id();
+			$userId = 26; // HARDCODED for testing - IGNORE
 
-            $this->validateFaState($capex);
+			$capex = MainCapex::findOrFail($id);
 
-            $capex->update([
-                'status' => 'returned',
-            ]);
+			/*
+			|--------------------------------------------------------------------------
+			| GET APPROVERS
+			|--------------------------------------------------------------------------
+			*/
 
-            $this->historyService->log(
-                $capex->fresh(),
-                Auth::id(),
-                'FA RETURNED TRANSACTION'
-            );
+			$approvers = ApproverSet::where('main_capex_id', $id)
+				->where('approver_set_name', 'FIRST PHASE APPROVER')
+				->get();
 
-            return $capex;
-        });
-    }
+			$currentApprover = $approvers
+				->where('user_id', $userId)
+				->where('level', $capex->first_phase_level)
+				->first();
+
+			if (!$currentApprover) {
+				throw new \Exception('You are not allowed to return this.');
+			}
+
+			/*
+			|--------------------------------------------------------------------------
+			| RESET FLOW
+			|--------------------------------------------------------------------------
+			*/
+
+			$capex->update([
+				'first_phase_level' => 1,
+				'status' => 'returned',
+				'phase' => 'for_first_phase_approval'
+			]);
+
+			/*
+			|--------------------------------------------------------------------------
+			| HISTORY
+			|--------------------------------------------------------------------------
+			*/
+
+			$this->historyService->log(
+				$capex->fresh(),
+				$userId,
+				"RETURNED AT LEVEL {$currentApprover->level} → RESET TO LEVEL 1"
+			);
+
+			return $capex->fresh();
+		});
+	}
+
+	public function reject($id, $remarks = null)
+	{
+		return DB::transaction(function () use ($id, $remarks) {
+
+			// $userId = Auth::id();
+			$userId = 25; // HARDCODED for testing - IGNORE
+
+			$capex = MainCapex::findOrFail($id);
+
+			/*
+			|--------------------------------------------------------------------------
+			| GET APPROVERS
+			|--------------------------------------------------------------------------
+			*/
+
+			$approvers = ApproverSet::where('main_capex_id', $id)
+				->where('approver_set_name', 'FIRST PHASE APPROVER')
+				->get();
+
+			$currentApprover = $approvers
+				->where('user_id', $userId)
+				->where('level', $capex->first_phase_level)
+				->first();
+
+			if (!$currentApprover) {
+				throw new \Exception('You are not allowed to reject this.');
+			}
+
+			/*
+			|--------------------------------------------------------------------------
+			| RESET FLOW
+			|--------------------------------------------------------------------------
+			*/
+
+			$capex->update([
+				'first_phase_level' => 1,
+				'status' => 'rejected',
+				'phase' => 'for_first_phase_approval'
+			]);
+
+			/*
+			|--------------------------------------------------------------------------
+			| HISTORY
+			|--------------------------------------------------------------------------
+			*/
+
+			$this->historyService->log(
+				$capex->fresh(),
+				$userId,
+				"REJECTED AT LEVEL {$currentApprover->level} → RESET TO LEVEL 1"
+			);
+
+			return $capex->fresh();
+		});
+	}
 
     /**
      * SUBMIT TRANSACTION
      */
     public function submit($id)
-    {
-        return DB::transaction(function () use ($id) {
+	{
+		return DB::transaction(function () use ($id) {
 
-            $capex = MainCapex::findOrFail($id);
+			// $userId = Auth::id();
+			$userId = 26; // HARDCODED for testing - IGNORE
 
-            $this->validateFaState($capex);
+			$capex = MainCapex::findOrFail($id);
 
-            $capex->update([
-                'first_phase_level' => 2,
-                'status' => 'confirmed',
-                'phase' => 'for_estimate',
-            ]);
+			/*
+			|--------------------------------------------------------------------------
+			| GET APPROVER SET (FIRST PHASE)
+			|--------------------------------------------------------------------------
+			*/
 
-            $this->historyService->log(
-                $capex->fresh(),
-                Auth::id(),
-                'FA CONFIRMED → MOVED TO ESTIMATION PHASE'
-            );
+			$approvers = ApproverSet::where('main_capex_id', $id)
+				->where('approver_set_name', 'FIRST PHASE APPROVER')
+				->orderBy('level')
+				->get();
 
-            return $capex;
-        });
-    }
+			if ($approvers->isEmpty()) {
+				throw new \Exception('No approvers configured.');
+			}
 
-    /**
-     * STATE VALIDATION
-     */
-    private function validateFaState($capex)
-    {
-        if (
-            $capex->estimation_level != 1 ||
-            $capex->estimation_approving_level != 1 ||
-            $capex->first_phase_level != 1 ||
-            ($capex->status !== 'pending' &&
-             $capex->status !== 'returned') ||
-            $capex->phase !== 'for_first_phase_approval'
-        ) {
-            throw new \Exception('Invalid FA transaction state.');
-        }
-    }
+			/*
+			|--------------------------------------------------------------------------
+			| GET CURRENT APPROVER LEVEL
+			|--------------------------------------------------------------------------
+			*/
+
+			$currentApprover = $approvers
+				->where('user_id', $userId)
+				->where('level', $capex->first_phase_level)
+				->first();
+
+			if (!$currentApprover) {
+				throw new \Exception('You are not authorized to approve this.');
+			}
+
+			$currentLevel = $capex->first_phase_level;
+			$maxLevel = $approvers->max('level');
+
+			/*
+			|--------------------------------------------------------------------------
+			| CHECK IF FINAL APPROVER
+			|--------------------------------------------------------------------------
+			*/
+
+			if ($currentLevel == $maxLevel) {
+
+				// ✅ FINAL APPROVER
+				$capex->update([
+					'first_phase_level' => $maxLevel + 1,
+					'status' => 'confirmed',
+					'phase' => 'for_estimate',
+				]);
+
+				$this->historyService->log(
+					$capex->fresh(),
+					$userId,
+					"FINAL APPROVER (LEVEL {$currentLevel}) → CONFIRMED & MOVED TO ESTIMATION"
+				);
+
+			} else {
+
+				// 🔁 MOVE TO NEXT APPROVER
+				$nextLevel = $currentLevel + 1;
+
+				$capex->update([
+					'first_phase_level' => $nextLevel,
+					'status' => 'for_approval',
+					'phase' => 'for_first_phase_approval',
+				]);
+
+				$this->historyService->log(
+					$capex->fresh(),
+					$userId,
+					"APPROVED LEVEL {$currentLevel} → MOVED TO LEVEL {$nextLevel}"
+				);
+			}
+
+			return $capex->fresh();
+		});
+	}
 }

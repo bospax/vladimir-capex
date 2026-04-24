@@ -30,6 +30,7 @@ class MainCapex extends Model
         'status',
         'phase',
         'remarks',
+		'revision_no'
     ];
 
 	public function requestor()

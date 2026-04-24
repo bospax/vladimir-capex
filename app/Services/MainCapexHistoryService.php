@@ -76,6 +76,7 @@ class MainCapexHistoryService
 
             'approver_id' => $approverId,
             'change_log' => $changeLog,
+            'revision_no' => $capex->revision_no,
         ]);
     }
 }

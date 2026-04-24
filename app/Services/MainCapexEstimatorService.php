@@ -76,7 +76,7 @@ class MainCapexEstimatorService
                     ->where('main_capex_id', $mainCapexId)
                     ->firstOrFail();
 
-                // 🧹 DELETE ONLY SAME USER + SAME LEVEL (EDIT MODE)
+                // DELETE ONLY SAME USER + SAME LEVEL (EDIT MODE)
                 SubSubCapex::where('sub_capex_id', $subCapex->id)
                     ->where('estimation_level', $currentLevel)
                     ->where('estimator_id', $userId)
@@ -117,7 +117,7 @@ class MainCapexEstimatorService
 
                 $subCapex->update([
                     'estimate_amount' => $totalEstimate,
-                    'variance_amount' => $totalEstimate - $subCapex->applied_amount,
+                    'variance_amount' => $subCapex->applied_amount - $totalEstimate,
                 ]);
             }
 
@@ -132,7 +132,7 @@ class MainCapexEstimatorService
 
             $capex->update([
                 'total_applied_amount' => $totalApplied,
-                'total_variance_amount' => $totalEstimated - $totalApplied,
+                'total_variance_amount' => $totalApplied - $totalEstimated,
             ]);
 
             /*
@@ -159,13 +159,11 @@ class MainCapexEstimatorService
         // $userId = Auth::id();
 		$userId = 9; // HARDCODED for testing - IGNORE
 
-        return MainCapex::where('first_phase_level', 2)
-            ->where('status', 'confirmed')
+        return MainCapex::where('status', 'confirmed')
             ->where('phase', 'for_estimate')
             // IMPORTANT: Filter by approver_set
             ->whereHas('approverSets', function ($query) use ($userId) {
-                $query->where('user_id', $userId)
-                      ->where('approver_set_name', 'ESTIMATOR LEVEL 1');
+                $query->where('user_id', $userId);
             })
 			->whereDoesntHave('subCapex.subSubCapex')
             ->latest()
@@ -187,8 +185,7 @@ class MainCapexEstimatorService
 
         // SECURITY: ensure user is allowed
         ->whereHas('approverSets', function ($query) use ($userId) {
-            $query->where('user_id', $userId)
-                  ->where('approver_set_name', 'ESTIMATOR LEVEL 1');
+            $query->where('user_id', $userId);
         })
         ->firstOrFail();
 
