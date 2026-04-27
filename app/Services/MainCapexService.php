@@ -138,26 +138,45 @@ class MainCapexService
     }
 
 	private function attachApprovers(MainCapex $main)
-    {
-        $approvers = ApproverUnit::where('one_charging_id', $main->one_charging_id)->get();
+	{
+		$query = ApproverUnit::where('one_charging_id', $main->one_charging_id);
 
-        if ($approvers->isEmpty()) {
-            throw new \Exception('No approvers found for this One Charging ID');
-        }
+		// 🔥 Apply special rule for budgeted
+		if ($main->budget_type === 'Budgeted') {
 
-        $approverSetData = $approvers->map(function ($item) use ($main) {
-            return [
-                'main_capex_id' => $main->id,
-                'user_id' => $item->approver_id,
-                'level' => $item->level,
-                'approver_set_name' => $item->approver_set_name,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-        })->toArray();
+			$query->where(function ($q) {
+				$q->where(function ($sub) {
+					// Only FIRST PHASE APPROVER level 1
+					$sub->where('approver_set_name', 'FIRST PHASE APPROVER')
+						->where('level', 1);
+				})
+				->orWhere(function ($sub) {
+					// All other approvers (not FIRST PHASE APPROVER)
+					$sub->where('approver_set_name', '!=', 'FIRST PHASE APPROVER');
+				});
+			});
 
-        ApproverSet::insert($approverSetData);
-    }
+		}
+
+		$approvers = $query->get();
+
+		if ($approvers->isEmpty()) {
+			throw new \Exception('No approvers found for this One Charging ID');
+		}
+
+		$approverSetData = $approvers->map(function ($item) use ($main) {
+			return [
+				'main_capex_id' => $main->id,
+				'user_id' => $item->approver_id,
+				'level' => $item->level,
+				'approver_set_name' => $item->approver_set_name,
+				'created_at' => now(),
+				'updated_at' => now(),
+			];
+		})->toArray();
+
+		ApproverSet::insert($approverSetData);
+	}
 
 	public function updateWithChildren($id, array $data)
 	{
@@ -177,12 +196,7 @@ class MainCapexService
 				throw new \Exception('Sub Capex cannot be empty');
 			}
 
-			if ((($main->status === 'returned') || ($main->status === 'rejected')) && $main->phase === 'for_first_phase_approval') {
-				$data['first_phase_level'] = 1;
-				$data['status'] = 'pending';
-				$data['phase'] = 'for_first_phase_approval';
-				$data['revision_no'] = $main->revision_no + 1;
-			}
+			$data = $this->reSubmitWorkflow($data, $main);
 
 			// 4. Update main
 			$main->update($data);
@@ -219,6 +233,7 @@ class MainCapexService
 			$this->historyService->log(
 				$main,
 				Auth::id(),
+				null,
 				'Updated CAPEX: ' . json_encode([
 					'main_changes' => $changes,
 					'sub_capex' => [
@@ -232,6 +247,18 @@ class MainCapexService
 			// 10. Return fresh data
 			return MainCapex::with('subCapex')->find($main->id);
 		});
+	}
+
+	private function reSubmitWorkflow(array $data, MainCapex $main): array
+	{
+		if ((($main->status === 'returned') || ($main->status === 'rejected')) && $main->phase === 'for_first_phase_approval') {
+			$data['first_phase_level'] = 1;
+			$data['status'] = 'pending';
+			$data['phase'] = 'for_first_phase_approval';
+			$data['revision_no'] = $main->revision_no + 1;
+		}
+
+		return $data;
 	}
 }
 

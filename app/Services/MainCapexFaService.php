@@ -88,7 +88,8 @@ class MainCapexFaService
 			$capex->update([
 				'first_phase_level' => 1,
 				'status' => 'returned',
-				'phase' => 'for_first_phase_approval'
+				'phase' => 'for_first_phase_approval',
+				'remarks' => $remarks,
 			]);
 
 			/*
@@ -100,6 +101,7 @@ class MainCapexFaService
 			$this->historyService->log(
 				$capex->fresh(),
 				$userId,
+				$currentApprover->approver_set_name,
 				"RETURNED AT LEVEL {$currentApprover->level} → RESET TO LEVEL 1"
 			);
 
@@ -112,7 +114,7 @@ class MainCapexFaService
 		return DB::transaction(function () use ($id, $remarks) {
 
 			// $userId = Auth::id();
-			$userId = 25; // HARDCODED for testing - IGNORE
+			$userId = 19; // HARDCODED for testing - IGNORE
 
 			$capex = MainCapex::findOrFail($id);
 
@@ -144,7 +146,8 @@ class MainCapexFaService
 			$capex->update([
 				'first_phase_level' => 1,
 				'status' => 'rejected',
-				'phase' => 'for_first_phase_approval'
+				'phase' => 'for_first_phase_approval',
+				'remarks' => $remarks,
 			]);
 
 			/*
@@ -156,6 +159,7 @@ class MainCapexFaService
 			$this->historyService->log(
 				$capex->fresh(),
 				$userId,
+				$currentApprover->approver_set_name,
 				"REJECTED AT LEVEL {$currentApprover->level} → RESET TO LEVEL 1"
 			);
 
@@ -171,7 +175,7 @@ class MainCapexFaService
 		return DB::transaction(function () use ($id) {
 
 			// $userId = Auth::id();
-			$userId = 26; // HARDCODED for testing - IGNORE
+			$userId = 39; // HARDCODED for testing - IGNORE
 
 			$capex = MainCapex::findOrFail($id);
 
@@ -226,6 +230,7 @@ class MainCapexFaService
 				$this->historyService->log(
 					$capex->fresh(),
 					$userId,
+					$currentApprover->approver_set_name,
 					"FINAL APPROVER (LEVEL {$currentLevel}) → CONFIRMED & MOVED TO ESTIMATION"
 				);
 
@@ -243,6 +248,7 @@ class MainCapexFaService
 				$this->historyService->log(
 					$capex->fresh(),
 					$userId,
+					$currentApprover->approver_set_name,
 					"APPROVED LEVEL {$currentLevel} → MOVED TO LEVEL {$nextLevel}"
 				);
 			}

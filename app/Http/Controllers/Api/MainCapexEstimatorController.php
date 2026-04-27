@@ -56,4 +56,17 @@ class MainCapexEstimatorController extends Controller
 			'data' => $result
 		]);
 	}
+
+	public function return($id, Request $request)
+	{
+		$remarks = $request->input('remarks');
+
+		$result = $this->service->return($id, $remarks);
+
+		return response()->json([
+			'success' => true,
+			'message' => 'Capex returned successfully',
+			'data' => $result
+		]);
+	}
 }

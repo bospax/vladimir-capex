@@ -50,7 +50,7 @@ class MainCapexHistoryService
         });
     }
 
-    public function log(MainCapex $capex, ?int $approverId = null, ?string $changeLog = null)
+    public function log(MainCapex $capex, ?int $approverId = null, ?string $approverSetName = null, ?string $changeLog = null)
     {
         MainCapexHistory::create([
             'main_capex_id' => $capex->id,
@@ -75,6 +75,7 @@ class MainCapexHistoryService
             'remarks' => $capex->remarks,
 
             'approver_id' => $approverId,
+            'approver_set_name' => $approverSetName,
             'change_log' => $changeLog,
             'revision_no' => $capex->revision_no,
         ]);

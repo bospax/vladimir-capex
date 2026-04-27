@@ -47,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
 		Route::get('/main-capex', [MainCapexEstimatorController::class, 'index']);
 		Route::get('/main-capex/{id}', [MainCapexEstimatorController::class, 'show']);
 		Route::post('/main-capex/{id}/estimate', [MainCapexEstimatorController::class, 'saveEstimation']);
+		Route::post('/main-capex/{id}/return', [MainCapexEstimatorController::class, 'return']);
 	});
 });
 

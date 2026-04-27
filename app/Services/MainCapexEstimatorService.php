@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ApproverSet;
 use App\Models\MainCapex;
 use App\Models\SubCapex;
 use App\Models\SubSubCapex;
@@ -33,7 +34,6 @@ class MainCapexEstimatorService
             */
 
             if (
-                $capex->first_phase_level != 2 ||
                 $capex->status !== 'confirmed' ||
                 $capex->phase !== 'for_estimate'
             ) {
@@ -43,9 +43,9 @@ class MainCapexEstimatorService
             // 🔥 CURRENT LEVEL (1 → 4)
             $currentLevel = $capex->estimation_level;
 
-            if ($currentLevel < 1 || $currentLevel > 4) {
-                throw new \Exception('Invalid estimation level.');
-            }
+            // if ($currentLevel < 1 || $currentLevel > 4) {
+            //     throw new \Exception('Invalid estimation level.');
+            // }
 
             /*
             |--------------------------------------------------------------------------
@@ -133,6 +133,9 @@ class MainCapexEstimatorService
             $capex->update([
                 'total_applied_amount' => $totalApplied,
                 'total_variance_amount' => $totalApplied - $totalEstimated,
+				'estimation_level' => $currentLevel + 1, // AUTO-INCREMENT TO NEXT LEVEL
+				'status' => 'for_approval', // MOVE TO APPROVAL PHASE
+				'phase' => 'for_estimate_approval',
             ]);
 
             /*
@@ -150,6 +153,63 @@ class MainCapexEstimatorService
             return $capex->fresh();
         });
     }
+
+	public function return($id, $remarks = null)
+	{
+		return DB::transaction(function () use ($id, $remarks) {
+
+			// $userId = Auth::id();
+			$userId = 9; // HARDCODED for testing - IGNORE
+
+			$capex = MainCapex::findOrFail($id);
+
+			/*
+			|--------------------------------------------------------------------------
+			| GET APPROVERS
+			|--------------------------------------------------------------------------
+			*/
+
+			$approvers = ApproverSet::where('main_capex_id', $id)
+				->where('approver_set_name', 'LIKE', '%ESTIMATOR LEVEL%')
+				->get();
+
+			$currentApprover = $approvers
+				->where('user_id', $userId)
+				->first();
+
+			if (!$currentApprover) {
+				throw new \Exception('You are not allowed to return this.');
+			}
+
+			/*
+			|--------------------------------------------------------------------------
+			| RESET FLOW
+			|--------------------------------------------------------------------------
+			*/
+
+			$capex->update([
+				'first_phase_level' => 1,
+				'status' => 'returned',
+				'phase' => 'for_first_phase_approval',
+				'remarks' => $remarks,
+			]);
+
+			/*
+			|--------------------------------------------------------------------------
+			| HISTORY
+			|--------------------------------------------------------------------------
+			*/
+
+			$this->historyService->log(
+				$capex->fresh(),
+				$userId,
+				$currentApprover->approver_set_name,
+				"RETURNED BY AN ESTIMATOR → RESET TO LEVEL 1"
+			);
+
+			return $capex->fresh();
+		});
+	}
 
     /**
      * Get Estimation List (for logged-in estimator only)

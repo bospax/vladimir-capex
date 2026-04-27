@@ -36,6 +36,7 @@ return new class extends Migration
 
             $table->text('remarks')->nullable();
 			$table->integer('approver_id')->nullable();
+			$table->string('approver_set_name')->nullable();
 			$table->text('change_log')->nullable();
 
             $table->timestamps();

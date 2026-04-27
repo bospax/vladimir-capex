@@ -30,7 +30,8 @@ class MainCapexHistory extends Model
         'remarks',
         'approver_id',
         'change_log',
-        'revision_no'
+        'revision_no',
+        'approver_set_name'
     ];
 
     // 🔗 Relationships
