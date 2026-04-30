@@ -220,10 +220,10 @@ class MainCapexFaService
 
 			if ($currentLevel == $maxLevel) {
 
-				// ✅ FINAL APPROVER
+				// FINAL APPROVER
 				$capex->update([
 					'first_phase_level' => $maxLevel + 1,
-					'status' => 'confirmed',
+					'status' => 'approved',
 					'phase' => 'for_estimate',
 				]);
 
@@ -236,7 +236,7 @@ class MainCapexFaService
 
 			} else {
 
-				// 🔁 MOVE TO NEXT APPROVER
+				// MOVE TO NEXT APPROVER
 				$nextLevel = $currentLevel + 1;
 
 				$capex->update([

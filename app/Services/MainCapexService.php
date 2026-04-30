@@ -103,7 +103,7 @@ class MainCapexService
             // 2. Create main
             $main = MainCapex::create($data);
 
-			// ✅ 2.5 Attach approvers (IMPORTANT PART)
+			// 2.5 Attach approvers (IMPORTANT PART)
             $this->attachApprovers($main);
 
             // 3. Prepare children
@@ -141,7 +141,7 @@ class MainCapexService
 	{
 		$query = ApproverUnit::where('one_charging_id', $main->one_charging_id);
 
-		// 🔥 Apply special rule for budgeted
+		// Apply special rule for budgeted
 		if ($main->budget_type === 'Budgeted') {
 
 			$query->where(function ($q) {
