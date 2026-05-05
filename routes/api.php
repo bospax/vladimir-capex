@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\ApproverUnitController;
 use App\Http\Controllers\Api\MainCapexEstimatorApproverController;
 use App\Http\Controllers\Api\MainCapexEstimatorController;
 use App\Http\Controllers\Api\MainCapexFaController;
+use App\Http\Controllers\Api\MainCapexMajorApproverController;
 use App\Http\Controllers\Api\MainCapexRequestorController;
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -35,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 	Route::prefix('requestor')->group(function () {
 		Route::get('main-capex/tab', [MainCapexRequestorController::class, 'getDataByRequestorTab']);
+		Route::post('main-capex/{id}/confirm-estimate', [MainCapexRequestorController::class, 'confirmEstimate']);
 	});
 
 	Route::prefix('fa')->group(function () {
@@ -57,6 +59,13 @@ Route::middleware('auth:sanctum')->group(function () {
 		Route::get('/main-capex/{id}', [MainCapexEstimatorApproverController::class, 'show']);
 		Route::post('/main-capex/{id}/approve', [MainCapexEstimatorApproverController::class, 'approve']);
 		Route::post('/main-capex/{id}/reject', [MainCapexEstimatorApproverController::class, 'reject']);
+	});
+
+	Route::prefix('major-approver')->group(function () {
+		Route::get('/main-capex', [MainCapexMajorApproverController::class, 'list']);
+		Route::get('/main-capex/{id}', [MainCapexMajorApproverController::class, 'show']);
+		Route::post('/main-capex/{id}/approve', [MainCapexMajorApproverController::class, 'approve']);
+		Route::post('/main-capex/{id}/reject', [MainCapexMajorApproverController::class, 'reject']);
 	});
 });
 

@@ -28,7 +28,7 @@ class MainCapexEstimatorApproverService
         return DB::transaction(function () use ($id) {
 
             // $userId = Auth::id();
-			$userId = 28; // HARDCODED for testing - IGNORE
+			$userId = 34; // HARDCODED for testing - IGNORE
 
             $capex = MainCapex::findOrFail($id);
 
@@ -89,6 +89,7 @@ class MainCapexEstimatorApproverService
 
                 // FINAL APPROVAL
                 $capex->update([
+					'estimation_approving_level' => $currentLevel + 1,
                     'status' => 'approved',
                     'phase' => 'estimate_completed',
                 ]);
@@ -131,7 +132,7 @@ class MainCapexEstimatorApproverService
         return DB::transaction(function () use ($id, $remarks) {
 
             // $userId = Auth::id();
-			$userId = 28; // HARDCODED for testing - IGNORE
+			$userId = 23; // HARDCODED for testing - IGNORE
 
             $capex = MainCapex::findOrFail($id);
 
@@ -206,7 +207,7 @@ class MainCapexEstimatorApproverService
 	public function getEstimatorApproverList()
 	{
 		// $userId = Auth::id();
-		$userId = 28; // HARDCODED for testing - IGNORE
+		$userId = 23; // HARDCODED for testing - IGNORE
 
 		return MainCapex::where('phase', 'for_estimate_approval')
 			->whereHas('approverSets', function ($query) use ($userId) {
@@ -227,7 +228,7 @@ class MainCapexEstimatorApproverService
 	public function getCapexDetails($id)
     {
         // $userId = Auth::id();
-		$userId = 28; // HARDCODED for testing - IGNORE
+		$userId = 23; // HARDCODED for testing - IGNORE
 
         $capex = MainCapex::with([
             'subCapex.subSubCapex'

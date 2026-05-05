@@ -4,11 +4,13 @@ namespace App\Services;
 
 use App\Models\ApproverSet;
 use App\Models\MainCapex;
+use App\Models\MainCapexHistory;
 use App\Models\SubCapex;
 use App\Models\SubSubCapex;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 
 class MainCapexEstimatorService
 {
@@ -20,11 +22,72 @@ class MainCapexEstimatorService
         $this->historyService = $historyService;
     }
 
+	public function handleResubmissionRevision($mainCapexId)
+	{
+		return DB::transaction(function () use ($mainCapexId) {
+
+			$capex = MainCapex::findOrFail($mainCapexId);
+
+			/*
+			|------------------------------------------------------------------
+			| STEP 1: INCREMENT REVISION
+			|------------------------------------------------------------------
+			*/
+
+			$currentRevision = $capex->revision_no ?? 0;
+			$newRevision = $capex->revision_no + 1;
+
+			$capex->update([
+				'revision_no' => $newRevision
+			]);
+
+			/*
+			|------------------------------------------------------------------
+			| STEP 2: UPDATE HISTORY (CURRENT CYCLE ONLY)
+			|------------------------------------------------------------------
+			*/
+
+			MainCapexHistory::where('main_capex_id', $mainCapexId)
+				->where('revision_no', $currentRevision)
+				->whereNotIn('status', ['returned', 'rejected'])
+				->update([
+					'revision_no' => $newRevision
+				]);
+
+			return $capex->fresh();
+		});
+	}
+
+	private function storeAttachment(
+		UploadedFile $file,
+		string $folder = 'capex-estimations',
+		?int $mainCapexId = null,
+		?int $level = null
+	): string {
+		// original name (no extension)
+		$originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+
+		// clean filename
+		$cleanName = Str::slug($originalName);
+
+		// unique suffix
+		$unique = time() . '-' . Str::random(6);
+
+		// extension
+		$extension = $file->getClientOriginalExtension();
+
+		// final filename
+		$fileName = "{$cleanName}-{$unique}.{$extension}";
+
+		// store file
+		return $file->storeAs($folder, $fileName, 'public');
+	}
+
     public function saveEstimation($mainCapexId, array $data)
 	{
 		return DB::transaction(function () use ($mainCapexId, $data) {
 
-			$userId = 17; // HARDCODED for testing - IGNORE
+			$userId = 35; // HARDCODED for testing - IGNORE
 
 			$capex = MainCapex::with('subCapex')->findOrFail($mainCapexId);
 
@@ -113,12 +176,16 @@ class MainCapexEstimatorService
 
 					$filePath = null;
 
-					// HANDLE ATTACHMENT SAFELY
 					if (
 						isset($item['attachment']) &&
 						$item['attachment'] instanceof UploadedFile
 					) {
-						$filePath = $item['attachment']->store('capex-estimations', 'public');
+						$filePath = $this->storeAttachment(
+							$item['attachment'],
+							'capex-estimations',
+							$mainCapexId,
+							$currentLevel
+						);
 					}
 
 					SubSubCapex::create([
@@ -170,6 +237,8 @@ class MainCapexEstimatorService
 				'phase' => 'for_estimate_approval',
 			]);
 
+			$this->handleResubmissionRevision($mainCapexId);
+
 			/*
 			|--------------------------------------------------------------------------
 			| HISTORY LOG
@@ -192,7 +261,7 @@ class MainCapexEstimatorService
 		return DB::transaction(function () use ($mainCapexId, $remarks) {
 
 			// $userId = Auth::id();
-			$userId = 20; // HARDCODED for testing - IGNORE
+			$userId = 35; // HARDCODED for testing - IGNORE
 
 			$capex = MainCapex::with('subCapex')->findOrFail($mainCapexId);
 
@@ -267,7 +336,7 @@ class MainCapexEstimatorService
     public function getEstimatorList()
 	{
 		// $userId = Auth::id();
-		$userId = 20; // HARDCODED for testing - IGNORE
+		$userId = 13; // HARDCODED for testing - IGNORE
 
 		return MainCapex::where('phase', 'for_estimate')
 			->whereHas('approverSets', function ($query) use ($userId) {

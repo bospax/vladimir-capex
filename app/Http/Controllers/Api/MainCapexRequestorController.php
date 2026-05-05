@@ -31,4 +31,17 @@ class MainCapexRequestorController extends Controller
 
 		return MainCapexResource::collection($data);
 	}
+
+	public function confirmEstimate($id)
+	{
+		$userId = Auth::id();
+
+		$result = $this->service->confirmEstimate($id, $userId);
+
+		return response()->json([
+			'success' => true,
+			'message' => 'Estimate confirmed successfully',
+			'data' => $result
+		]);
+	}
 }
